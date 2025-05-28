@@ -152,6 +152,7 @@ Tahap data preparation melibatkan transformasi data mentah menjadi format yang s
 ### 1. Pemrosesan Tags
 - **Standardisasi:** Tags diubah menjadi huruf kecil untuk konsistensi format
 - **Agregasi:** Tags untuk film yang sama digabungkan menjadi satu string per movieId
+- **Penghapusan Data Kosong:** Baris yang memiliki tag kosong dihapus sebelum agregasi
 - **Alasan:** Menghindari duplikasi dan memungkinkan representasi lengkap tags per film
 
 ```python
@@ -172,6 +173,7 @@ movies_enhanced['tag'] = movies_enhanced['tag'].fillna('')
 ### 3. Pembuatan Fitur Gabungan ('Soup')
 - **Normalisasi Genre:** Karakter `|` pada `genres` diganti dengan spasi
 - **Feature Engineering:** Kolom `soup` dibuat dari gabungan `genres_processed` dan `tag`
+- **Pembersihan Data:** Nilai kosong diisi dengan string kosong dan spasi berlebih dihilangkan
 - **Alasan:** Membuat representasi tekstual komprehensif untuk content-based filtering
 
 ```python
@@ -180,7 +182,16 @@ movies_enhanced['soup'] = movies_enhanced['genres_processed'] + ' ' + movies_enh
 movies_enhanced['soup'] = movies_enhanced['soup'].fillna('').str.strip()
 ```
 
-### 4. TF-IDF Vectorization
+### 4. Pembuatan DataFrame Final untuk Content-Based Filtering
+- **Penghapusan Duplikat:** Menghilangkan duplikasi berdasarkan `movieId` untuk memastikan setiap film unik
+- **Pengaturan Index:** `movieId` dijadikan sebagai indeks dari DataFrame untuk memudahkan akses data
+- **Alasan:** Menyiapkan struktur data yang optimal untuk content-based filtering dan menghindari masalah duplikasi
+
+```python
+movies_cb_enhanced = movies_enhanced.drop_duplicates(subset='movieId').set_index('movieId')
+```
+
+### 5. TF-IDF Vectorization
 - **Ekstraksi Fitur:** Menggunakan `TfidfVectorizer` untuk mengubah teks 'soup' menjadi vektor numerik
 - **Stop Words:** Menghilangkan kata-kata umum bahasa Inggris yang tidak informatif
 - **Alasan:** TF-IDF mengukur pentingnya kata dalam dokumen relatif terhadap koleksi dokumen, penting untuk content-based filtering
@@ -188,15 +199,6 @@ movies_enhanced['soup'] = movies_enhanced['soup'].fillna('').str.strip()
 ```python
 tfidf_enhanced = TfidfVectorizer(stop_words='english')
 tfidf_matrix_enhanced = tfidf_enhanced.fit_transform(movies_cb_enhanced['soup'])
-```
-
-### 5. Split Data untuk Collaborative Filtering
-- **Train-Test Split:** Data dibagi menjadi 80% training dan 20% testing
-- **Random State:** Diset untuk reproduktibilitas hasil
-- **Alasan:** Memungkinkan evaluasi objektif performa model collaborative filtering
-
-```python
-trainset, testset = train_test_split(data_surprise, test_size=0.2, random_state=42)
 ```
 
 ### 6. Persiapan Data untuk Surprise Library
@@ -207,6 +209,15 @@ trainset, testset = train_test_split(data_surprise, test_size=0.2, random_state=
 ```python
 reader = Reader(rating_scale=(0.5, 5.0))
 data_surprise = Dataset.load_from_df(ratings[['userId', 'movieId', 'rating']], reader)
+```
+
+### 7. Split Data untuk Collaborative Filtering
+- **Train-Test Split:** Data dibagi menjadi 80% training dan 20% testing
+- **Random State:** Diset untuk reproduktibilitas hasil
+- **Alasan:** Memungkinkan evaluasi objektif performa model collaborative filtering
+
+```python
+trainset, testset = train_test_split(data_surprise, test_size=0.2, random_state=42)
 ```
 
 ---
